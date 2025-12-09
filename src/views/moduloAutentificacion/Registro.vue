@@ -441,6 +441,11 @@ const handleRegister = async () => {
     return
   }
   
+  if (registerForm.value.password.length < 8) {
+    alert('La contraseña debe tener al menos 8 caracteres')
+    return
+  }
+  
   if (uploadedFiles.value.length === 0) {
     alert('Error: No hay documentos para subir.')
     return
@@ -489,7 +494,7 @@ const handleRegister = async () => {
       rut: registerForm.value.rut,
       localization: registerForm.value.location,
       description: registerForm.value.description,
-      pass: registerForm.value.password,
+      password: registerForm.value.password,
       
       // ¡Aquí está la magia! Enviamos la lista de "llaves"
       documentKeys: uploadedDocumentKeys, 
