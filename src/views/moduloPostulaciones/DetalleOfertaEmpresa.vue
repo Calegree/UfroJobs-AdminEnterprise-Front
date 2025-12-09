@@ -2,7 +2,17 @@
   <div class="min-h-screen bg-gray-50">
     <Navbar />
 
-    <div class="container mx-auto px-4 py-8">
+    <!-- Loading State -->
+    <div v-if="isLoading" class="container mx-auto px-4 py-8">
+      <div class="flex justify-center items-center h-64">
+        <svg class="animate-spin h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+        </svg>
+      </div>
+    </div>
+
+    <div v-else class="container mx-auto px-4 py-8">
       <!-- Breadcrumb -->
       <nav class="flex mb-8" aria-label="Breadcrumb">
         <ol class="inline-flex items-center space-x-1 md:space-x-3">
@@ -32,9 +42,12 @@
                   clip-rule="evenodd"
                 />
               </svg>
-              <a href="#" class="ml-1 text-gray-700 hover:text-blue-600 md:ml-2"
-                >Ofertas Laborales</a
+              <a 
+                @click="$router.push('/empresa/listaOfertas')" 
+                class="ml-1 text-gray-700 hover:text-blue-600 md:ml-2 cursor-pointer"
               >
+                Ofertas Laborales
+              </a>
             </div>
           </li>
           <li aria-current="page">
@@ -651,7 +664,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import Navbar from "@/components/Navbar.vue";
+import { getJobOfferById } from "@/config/api.js";
+
+const route = useRoute();
+const isLoading = ref(true);
 // Reactive data
 const hasApplied = ref(false);
 const isSaved = ref(false);
@@ -836,8 +854,60 @@ const viewApplications = () => {
   showApplicationsModal.value = true;
 };
 
-onMounted(() => {
-  // Incrementar contador de visualizaciones
-  job.value.views++;
+const loadJobOffer = async () => {
+  try {
+    isLoading.value = true;
+    const jobId = route.params.id || route.query.id;
+    
+    if (!jobId) {
+      console.warn('No se proporcionó un ID de oferta');
+      isLoading.value = false;
+      return;
+    }
+    
+    const offerData = await getJobOfferById(jobId);
+    
+    // Mapear los datos del backend al formato del componente
+    job.value = {
+      id: offerData.id,
+      title: offerData.title,
+      company: {
+        name: offerData.company?.name || 'Mi Empresa',
+        logo: offerData.company?.logo || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 150 150"%3E%3Crect fill="%23f0f0f0" width="150" height="150"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16" fill="%23999"%3ELogo%3C/text%3E%3C/svg%3E',
+        description: offerData.company?.description || 'Empresa comprometida con la excelencia',
+        industry: offerData.company?.industry || 'Tecnología',
+        size: offerData.company?.size || 'N/A',
+        website: offerData.company?.website || offerData.company?.web || '#',
+        founded: offerData.company?.founded || 'N/A'
+      },
+      location: offerData.location,
+      workType: offerData.modality === 'remoto' ? 'Remoto' : 
+                offerData.modality === 'presencial' ? 'Presencial' : 
+                offerData.modality === 'hibrido' ? 'Híbrido' : offerData.modality,
+      schedule: offerData.worktime,
+      salary: offerData.salary,
+      description: offerData.description,
+      requirements: offerData.requirements || [],
+      responsibilities: offerData.responsibilities || [],
+      benefits: offerData.benefits || job.value.benefits,
+      publishedDate: offerData.publication_date,
+      expiryDate: offerData.expiry_date,
+      postedDate: offerData.publication_date,
+      status: offerData.status === 'active' ? 'Activa' : 'Inactiva',
+      isActive: offerData.status === 'active',
+      applicants: offerData.applicants_count || 0,
+      views: offerData.views_count || 0,
+      saved: offerData.saved_count || 0
+    };
+  } catch (error) {
+    console.error('Error al cargar la oferta:', error);
+    alert(`Error al cargar la oferta: ${error.message}`);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+onMounted(async () => {
+  await loadJobOffer();
 });
 </script>

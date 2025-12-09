@@ -2,7 +2,17 @@
   <div class="min-h-screen bg-gray-50">
     <Navbar />
 
-    <div class="container mx-auto px-4 py-8">
+    <!-- Loading State -->
+    <div v-if="isLoading" class="container mx-auto px-4 py-8">
+      <div class="flex justify-center items-center h-64">
+        <svg class="animate-spin h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+        </svg>
+      </div>
+    </div>
+
+    <div v-else class="container mx-auto px-4 py-8">
       <!-- Breadcrumb -->
       <nav class="flex mb-8" aria-label="Breadcrumb">
         <ol class="inline-flex items-center space-x-1 md:space-x-3">
@@ -662,6 +672,9 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import Navbar from "@/components/Navbar.vue";
+import { getCompanyProfile } from "@/config/api.js";
+
+const isLoading = ref(true);
 // Reactive data
 const editMode = ref(false);
 
@@ -790,7 +803,32 @@ const privacySettings = () => {
   // Aquí iría la navegación a configuración de privacidad
 };
 
-onMounted(() => {
-  // Inicialización si es necesaria
+const loadCompanyProfile = async () => {
+  try {
+    isLoading.value = true;
+    const profile = await getCompanyProfile();
+    
+    // Actualizar los datos de la empresa con la respuesta del backend
+    company.value = {
+      ...company.value,
+      name: profile.name || company.value.name,
+      description: profile.description || company.value.description,
+      email: profile.email || company.value.email,
+      phone: profile.phone || company.value.phone,
+      website: profile.web || company.value.website,
+      location: profile.localization || company.value.location,
+      rut: profile.rut || company.value.rut,
+      logo: profile.logo || company.value.logo,
+    };
+  } catch (error) {
+    console.error('Error al cargar el perfil:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+onMounted(async () => {
+  await loadCompanyProfile();
 });
 </script>

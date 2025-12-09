@@ -26,6 +26,18 @@ export default defineConfig({
       '/auth': {
         target: 'http://localhost:3000',
         changeOrigin: true,
+      },
+      '/companies': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/job-offers': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/applications': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
       }
     }
   }

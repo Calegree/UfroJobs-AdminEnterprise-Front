@@ -410,14 +410,26 @@
               <label class="text-sm font-medium text-gray-500 mb-1 block">Modalidad</label>
               <select v-model="newOffer.modality" required class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900">
                 <option value="">Selecciona una opción</option>
-                <option value="Presencial">Presencial</option>
-                <option value="Remoto">Remoto</option>
-                <option value="Mixto">Mixto</option>
+                <option value="remoto">Remoto</option>
+                <option value="presencial">Presencial</option>
+                <option value="hibrido">Híbrido</option>
               </select>
             </div>
             <div>
+              <label class="text-sm font-medium text-gray-500 mb-1 block">Salario *</label>
+              <input v-model="newOffer.salary" type="text" required placeholder="Ej: $1.500.000 - $2.000.000" class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900" />
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-500 mb-1 block">Requisitos (separados por comas)</label>
+              <input v-model="newOffer.requirements" type="text" placeholder="Ej: React, Node.js, PostgreSQL" class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900" />
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-500 mb-1 block">Etiquetas (separadas por comas)</label>
+              <input v-model="newOffer.tags" type="text" placeholder="Ej: desarrollo, full-stack, tecnología" class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900" />
+            </div>
+            <div>
               <label class="text-sm font-medium text-gray-500 mb-1 block">Descripción de la oferta</label>
-              <textarea v-model="newOffer.description" required class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"></textarea>
+              <textarea v-model="newOffer.description" required rows="4" class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"></textarea>
             </div>
           </div>
           <div class="flex justify-end mt-6 pt-4 border-t">
@@ -516,6 +528,7 @@
 import { ref, computed, onMounted } from "vue";
 import Navbar from "../../components/Navbar.vue";
 import { useRouter } from "vue-router";
+import { getJobOffers, createJobOffer } from "@/config/api.js";
 const router = useRouter();
 
 // Reactive data
@@ -542,6 +555,9 @@ const newOffer = ref({
   location: '',
   schedule: '',
   modality: '',
+  salary: '',
+  requirements: '',
+  tags: '',
   description: ''
 });
 
@@ -679,8 +695,7 @@ const applyFilters = () => {
 
 const viewJobDetail = (jobId) => {
   console.log("Ver detalle del trabajo:", jobId);
-  router.push(`/empresa/detalleOferta`);
-  // Aquí iría la navegación al detalle
+  router.push({ name: 'detalleOfertaEmpresa', query: { id: jobId } });
 };
 
 const toggleJobStatus = (jobId) => {
@@ -734,21 +749,84 @@ const goToPage = (page) => {
   currentPage.value = page;
 };
 
-const submitOffer = () => {
-  // Aquí puedes enviar la oferta a tu backend o agregarla a tu lista local
-  console.log('Oferta creada:', newOffer.value);
-  showCreateModal.value = false;
-  // Limpia el formulario si lo deseas
-  newOffer.value = {
-    title: '',
-    location: '',
-    schedule: '',
-    modality: '',
-    description: ''
-  };
+const submitOffer = async () => {
+  try {
+    // Procesar requirements y tags desde strings separados por comas
+    const requirementsArray = newOffer.value.requirements 
+      ? newOffer.value.requirements.split(',').map(r => r.trim()).filter(r => r)
+      : [];
+    
+    const tagsArray = newOffer.value.tags
+      ? newOffer.value.tags.split(',').map(t => t.trim()).filter(t => t)
+      : [];
+
+    const offerData = {
+      title: newOffer.value.title,
+      description: newOffer.value.description,
+      requirements: requirementsArray.length > 0 ? requirementsArray : ['Sin requisitos especificados'],
+      location: newOffer.value.location,
+      tags: tagsArray.length > 0 ? tagsArray : ['general'],
+      salary: newOffer.value.salary,
+      worktime: newOffer.value.schedule,
+      modality: newOffer.value.modality,
+      publication_date: new Date().toISOString(),
+      status: 'active'
+    };
+
+    console.log('Datos a enviar:', offerData);
+    const result = await createJobOffer(offerData);
+    console.log('Oferta creada exitosamente:', result);
+    
+    // Recargar las ofertas
+    await loadJobOffers();
+    
+    showCreateModal.value = false;
+    newOffer.value = {
+      title: '',
+      location: '',
+      schedule: '',
+      modality: '',
+      salary: '',
+      requirements: '',
+      tags: '',
+      description: ''
+    };
+    
+    alert('Oferta creada exitosamente');
+  } catch (error) {
+    console.error('Error al crear oferta:', error);
+    alert(`Error: ${error.message}`);
+  }
 };
 
-onMounted(() => {
-  // Inicialización si es necesaria
+const loadJobOffers = async () => {
+  try {
+    const offers = await getJobOffers();
+    // Mapear las ofertas del backend al formato del componente
+    jobs.value = offers.map(offer => ({
+      id: offer.id,
+      title: offer.title,
+      company: {
+        name: offer.company?.name || 'Mi Empresa',
+        logo: offer.company?.logo || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 150 150"%3E%3Crect fill="%23f0f0f0" width="150" height="150"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16" fill="%23999"%3ELogo%3C/text%3E%3C/svg%3E'
+      },
+      location: offer.location,
+      workType: offer.modality,
+      schedule: offer.worktime,
+      type: offer.status === 'active' ? 'Empleo' : 'Inactivo',
+      description: offer.description,
+      postedDate: offer.publication_date,
+      applications: 0,
+      isActive: offer.status === 'active',
+      region: offer.location,
+      career: offer.tags?.[0] || 'General'
+    }));
+  } catch (error) {
+    console.error('Error al cargar ofertas:', error);
+  }
+};
+
+onMounted(async () => {
+  await loadJobOffers();
 });
 </script>

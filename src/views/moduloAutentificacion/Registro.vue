@@ -363,6 +363,7 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { ref } from 'vue'
+import { registerCompany, getPresignedUrl, uploadFileToS3 } from '@/config/api.js'
 
 // --- Configuración de Estado (MODIFICADO) ---
 const router = useRouter()

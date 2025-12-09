@@ -399,6 +399,7 @@ User Type Tabs -->
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { loginCompany } from "@/config/api.js";
 const router = useRouter();
 
 const userType = ref("company");
@@ -414,14 +415,21 @@ const loginForm = ref({
 const handleLogin = async () => {
   isLoading.value = true;
   try {
-    // Aquí iría la lógica de autenticación real
-    // Simular delay de API
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const data = await loginCompany(
+      loginForm.value.email,
+      loginForm.value.password
+    );
+    
+    // Guardar el token en localStorage
+    if (data.access_token) {
+      localStorage.setItem('access_token', data.access_token);
+    }
 
-    // Redirigir al dashboard de admin
-    router.push('/admin/dashboard');
+    // Redirigir a la lista de ofertas
+    router.push('/empresa/listaOfertas');
   } catch (error) {
     console.error("Login error:", error);
+    alert(`Error: ${error.message}`);
   } finally {
     isLoading.value = false;
   }
@@ -430,5 +438,13 @@ const handleLogin = async () => {
 const loginWithGoogle = () => {
   // Redirigir a la lista de ofertas de empresa
   router.push('/empresa/listaOfertas');
+};
+
+const goToRegister = () => {
+  router.push('/registro');
+};
+
+const goToForgotPassword = () => {
+  router.push('/olvidePassword');
 };
 </script>
