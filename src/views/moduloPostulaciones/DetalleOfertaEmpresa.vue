@@ -556,14 +556,61 @@
               >Modalidad</label
             >
             <select
-              v-model="editOffer.workType"
+              v-model="editOffer.modality"
               required
               class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
             >
               <option value="">Selecciona una opción</option>
-              <option value="Presencial">Presencial</option>
-              <option value="Remoto">Remoto</option>
-              <option value="Mixto">Mixto</option>
+              <option value="remoto">Remoto</option>
+              <option value="presencial">Presencial</option>
+              <option value="hibrido">Híbrido</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-500 mb-1 block"
+              >Salario *</label
+            >
+            <input
+              v-model="editOffer.salary"
+              type="text"
+              required
+              placeholder="Ej: $1.500.000 - $2.000.000"
+              class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
+            />
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-500 mb-1 block"
+              >Requisitos (separados por comas)</label
+            >
+            <input
+              v-model="editOffer.requirements"
+              type="text"
+              placeholder="Ej: React, Node.js, PostgreSQL"
+              class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
+            />
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-500 mb-1 block"
+              >Etiquetas (separadas por comas)</label
+            >
+            <input
+              v-model="editOffer.tags"
+              type="text"
+              placeholder="Ej: desarrollo, full-stack, tecnología"
+              class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
+            />
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-500 mb-1 block"
+              >Estado</label
+            >
+            <select
+              v-model="editOffer.status"
+              required
+              class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
+            >
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
             </select>
           </div>
           <div>
@@ -573,6 +620,7 @@
             <textarea
               v-model="editOffer.description"
               required
+              rows="4"
               class="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
             ></textarea>
           </div>
@@ -666,7 +714,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import Navbar from "@/components/Navbar.vue";
-import { getJobOfferById } from "@/config/api.js";
+import { getJobOfferById, updateJobOffer } from "@/config/api.js";
 
 const route = useRoute();
 const isLoading = ref(true);
@@ -753,11 +801,15 @@ const job = ref({
 });
 
 const editOffer = ref({
-  title: job.value.title,
-  location: job.value.location,
-  schedule: job.value.schedule,
-  workType: job.value.workType,
-  description: job.value.description,
+  title: '',
+  location: '',
+  schedule: '',
+  modality: '',
+  salary: '',
+  requirements: '',
+  tags: '',
+  status: '',
+  description: '',
 });
 
 // Computed properties
@@ -815,21 +867,86 @@ const saveJob = () => {
 };
 
 const editJob = () => {
+  // Convertir modality al valor del backend
+  let modalityValue = 'remoto';
+  if (job.value.workType === 'Presencial') modalityValue = 'presencial';
+  else if (job.value.workType === 'Híbrido') modalityValue = 'hibrido';
+  
+  // Cargar los datos actuales en el formulario de edición
+  editOffer.value = {
+    title: job.value.title,
+    location: job.value.location,
+    schedule: job.value.schedule,
+    modality: modalityValue,
+    salary: job.value.salary || '',
+    requirements: Array.isArray(job.value.requirements) 
+      ? job.value.requirements.join(', ') 
+      : '',
+    tags: job.value.tags 
+      ? (Array.isArray(job.value.tags) ? job.value.tags.join(', ') : '') 
+      : '',
+    status: job.value.status === 'Activa' ? 'activo' : 'inactivo',
+    description: job.value.description,
+  };
   showEditModal.value = true;
 };
 
-const saveOfferEdits = () => {
-  job.value.title = editOffer.value.title;
-  job.value.location = editOffer.value.location;
-  job.value.schedule = editOffer.value.schedule;
-  job.value.workType = editOffer.value.workType;
-  job.value.description = editOffer.value.description;
-  showEditModal.value = false;
+const saveOfferEdits = async () => {
+  try {
+    // Procesar requirements y tags desde strings separados por comas
+    const requirementsArray = editOffer.value.requirements 
+      ? editOffer.value.requirements.split(',').map(r => r.trim()).filter(r => r)
+      : [];
+    
+    const tagsArray = editOffer.value.tags
+      ? editOffer.value.tags.split(',').map(t => t.trim()).filter(t => t)
+      : [];
+
+    const updateData = {
+      title: editOffer.value.title,
+      description: editOffer.value.description,
+      requirements: requirementsArray.length > 0 ? requirementsArray : ['Sin requisitos especificados'],
+      location: editOffer.value.location,
+      tags: tagsArray.length > 0 ? tagsArray : ['general'],
+      salary: editOffer.value.salary,
+      worktime: editOffer.value.schedule,
+      modality: editOffer.value.modality,
+      state: editOffer.value.status
+    };
+
+    console.log('Datos a actualizar:', updateData);
+    
+    const jobId = route.params.id || route.query.id;
+    await updateJobOffer(jobId, updateData);
+    
+    // Recargar los datos de la oferta
+    await loadJobOffer();
+    
+    showEditModal.value = false;
+    alert('Oferta actualizada exitosamente');
+  } catch (error) {
+    console.error('Error al actualizar oferta:', error);
+    alert(`Error: ${error.message}`);
+  }
 };
 
-const toggleJobStatus = () => {
-  job.value.isActive = !job.value.isActive;
-  job.value.status = job.value.isActive ? "Activa" : "Inactiva";
+const toggleJobStatus = async () => {
+  try {
+    const newStatus = job.value.isActive ? 'inactivo' : 'activo';
+    const jobId = route.params.id || route.query.id;
+    
+    await updateJobOffer(jobId, {
+      state: newStatus
+    });
+    
+    job.value.isActive = !job.value.isActive;
+    job.value.status = job.value.isActive ? "Activa" : "Inactiva";
+    
+    alert(`Oferta ${job.value.isActive ? 'activada' : 'desactivada'} exitosamente`);
+  } catch (error) {
+    console.error('Error al cambiar estado:', error);
+    alert(`Error: ${error.message}`);
+  }
 };
 
 const deleteJob = () => {
@@ -890,11 +1007,12 @@ const loadJobOffer = async () => {
       requirements: offerData.requirements || [],
       responsibilities: offerData.responsibilities || [],
       benefits: offerData.benefits || job.value.benefits,
+      tags: offerData.tags || [],
       publishedDate: offerData.publication_date,
       expiryDate: offerData.expiry_date,
       postedDate: offerData.publication_date,
-      status: offerData.status === 'active' ? 'Activa' : 'Inactiva',
-      isActive: offerData.status === 'active',
+      status: offerData.state === 'activo' ? 'Activa' : 'Inactiva',
+      isActive: offerData.state === 'activo',
       applicants: offerData.applicants_count || 0,
       views: offerData.views_count || 0,
       saved: offerData.saved_count || 0

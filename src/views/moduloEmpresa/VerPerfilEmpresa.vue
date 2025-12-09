@@ -404,9 +404,12 @@
                       </div>
                     </div>
                     <div class="flex items-center space-x-2">
-                      <button
-                        @click="downloadDocument(document.id)"
+                      <a
+                        v-if="document.url"
+                        :href="document.url"
+                        target="_blank"
                         class="text-blue-600 hover:text-blue-800 transition-colors"
+                        title="Descargar documento"
                       >
                         <svg
                           class="w-5 h-5"
@@ -421,7 +424,7 @@
                             d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                           />
                         </svg>
-                      </button>
+                      </a>
                       <button
                         v-if="editMode"
                         @click="removeDocument(document.id)"
@@ -516,7 +519,8 @@
             <h3 class="text-xl font-bold text-gray-900 mb-2">
               {{ company.name }}
             </h3>
-            <p class="text-gray-600 mb-4">{{ company.industry }}</p>
+            <p class="text-gray-600 mb-2">{{ company.industry }}</p>
+            <p v-if="company.size" class="text-sm text-gray-500 mb-4">{{ company.size }}</p>
 
             <div class="space-y-2 text-sm text-gray-600 mb-6">
               <div class="flex items-center justify-center space-x-2">
@@ -552,18 +556,6 @@
                 <span>Miembro desde {{ formatDate(company.memberSince) }}</span>
               </div>
             </div>
-
-            <button
-              @click="toggleAccountStatus"
-              :class="
-                company.isActive
-                  ? 'bg-red-500 hover:bg-red-600'
-                  : 'bg-green-500 hover:bg-green-600'
-              "
-              class="w-full text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              {{ company.isActive ? "Desactivar cuenta" : "Activar cuenta" }}
-            </button>
           </div>
 
           <!--    
@@ -672,7 +664,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import Navbar from "@/components/Navbar.vue";
-import { getCompanyProfile } from "@/config/api.js";
+import { getCompanyProfile, updateCompanyProfile } from "@/config/api.js";
 
 const isLoading = ref(true);
 // Reactive data
@@ -725,22 +717,48 @@ const formatDate = (dateString) => {
   });
 };
 
-const saveProfile = () => {
-  // Aquí iría la lógica para guardar el perfil
-  console.log("Guardando perfil:", company.value);
-  editMode.value = false;
-  // Mostrar notificación de éxito
-};
+const saveProfile = async () => {
+  try {
+    if (!company.value.id) {
+      alert('Error: No se encontró el ID de la empresa');
+      return;
+    }
 
-const toggleAccountStatus = () => {
-  if (
-    confirm(
-      `¿Estás seguro de que quieres ${
-        company.value.isActive ? "desactivar" : "activar"
-      } tu cuenta?`
-    )
-  ) {
-    company.value.isActive = !company.value.isActive;
+    // Preparar los datos para enviar
+    const updateData = {
+      name: company.value.name,
+      rut: company.value.rut,
+      phone: company.value.phone,
+      email: company.value.email,
+      localization: company.value.location,
+      description: company.value.description,
+      web: company.value.website,
+    };
+
+    // Solo agregar password si se ha modificado (deberías tener un campo para esto)
+    // if (newPassword.value) {
+    //   updateData.password = newPassword.value;
+    // }
+
+    // Extraer las URLs de documentos si existen
+    if (company.value.documents && company.value.documents.length > 0) {
+      updateData.documents = company.value.documents
+        .map(doc => doc.url || doc)
+        .filter(url => url);
+    }
+
+    console.log('Datos a actualizar:', updateData);
+
+    await updateCompanyProfile(company.value.id, updateData);
+    
+    editMode.value = false;
+    alert('Perfil actualizado exitosamente');
+    
+    // Recargar el perfil para obtener los datos actualizados
+    await loadCompanyProfile();
+  } catch (error) {
+    console.error('Error al actualizar perfil:', error);
+    alert(`Error: ${error.message}`);
   }
 };
 
@@ -808,17 +826,35 @@ const loadCompanyProfile = async () => {
     isLoading.value = true;
     const profile = await getCompanyProfile();
     
+    console.log('Perfil cargado:', profile);
+    
+    // Mapear documentos si existen
+    const mappedDocuments = profile.documents && Array.isArray(profile.documents)
+      ? profile.documents.map((doc, index) => ({
+          id: index + 1,
+          name: doc.split('/').pop() || `Documento ${index + 1}`,
+          url: doc,
+          size: 'N/A',
+          uploadDate: 'N/A'
+        }))
+      : company.value.documents;
+    
     // Actualizar los datos de la empresa con la respuesta del backend
     company.value = {
       ...company.value,
+      id: profile.id,
       name: profile.name || company.value.name,
-      description: profile.description || company.value.description,
-      email: profile.email || company.value.email,
-      phone: profile.phone || company.value.phone,
-      website: profile.web || company.value.website,
-      location: profile.localization || company.value.location,
-      rut: profile.rut || company.value.rut,
       logo: profile.logo || company.value.logo,
+      rut: profile.rut || company.value.rut,
+      phone: profile.phone || company.value.phone,
+      email: profile.email || company.value.email,
+      location: profile.localization || company.value.location,
+      website: profile.web || company.value.website,
+      description: profile.description || company.value.description,
+      documents: mappedDocuments,
+      isActive: profile.state === 'activo',
+      industry: profile.industry || company.value.industry,
+      size: profile.size || company.value.size
     };
   } catch (error) {
     console.error('Error al cargar el perfil:', error);

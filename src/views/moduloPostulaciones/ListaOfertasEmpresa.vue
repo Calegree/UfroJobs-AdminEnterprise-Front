@@ -528,7 +528,7 @@
 import { ref, computed, onMounted } from "vue";
 import Navbar from "../../components/Navbar.vue";
 import { useRouter } from "vue-router";
-import { getJobOffers, createJobOffer } from "@/config/api.js";
+import { getJobOffers, createJobOffer, updateJobOffer } from "@/config/api.js";
 const router = useRouter();
 
 // Reactive data
@@ -698,10 +698,22 @@ const viewJobDetail = (jobId) => {
   router.push({ name: 'detalleOfertaEmpresa', query: { id: jobId } });
 };
 
-const toggleJobStatus = (jobId) => {
+const toggleJobStatus = async (jobId) => {
   const job = jobs.value.find((j) => j.id === jobId);
-  if (job) {
+  if (!job) return;
+  
+  try {
+    const newStatus = job.isActive ? 'inactivo' : 'activo';
+    
+    await updateJobOffer(jobId, {
+      state: newStatus
+    });
+    
     job.isActive = !job.isActive;
+    alert(`Oferta ${job.isActive ? 'activada' : 'desactivada'} exitosamente`);
+  } catch (error) {
+    console.error('Error al cambiar estado:', error);
+    alert(`Error: ${error.message}`);
   }
 };
 

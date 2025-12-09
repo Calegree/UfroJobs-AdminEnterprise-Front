@@ -76,6 +76,18 @@ export const getCompanyProfile = async () => {
   return handleResponse(response);
 };
 
+/**
+ * Update company profile by ID
+ */
+export const updateCompanyProfile = async (id, companyData) => {
+  const response = await fetch(`${API_BASE_URL}/companies/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(companyData),
+  });
+  return handleResponse(response);
+};
+
 // ==================== JOB OFFERS ENDPOINTS ====================
 
 /**
@@ -108,6 +120,18 @@ export const getJobOfferById = async (id) => {
   const response = await fetch(`${API_BASE_URL}/job-offers/${id}`, {
     method: 'GET',
     headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Update job offer by ID
+ */
+export const updateJobOffer = async (id, jobOfferData) => {
+  const response = await fetch(`${API_BASE_URL}/job-offers/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(jobOfferData),
   });
   return handleResponse(response);
 };
