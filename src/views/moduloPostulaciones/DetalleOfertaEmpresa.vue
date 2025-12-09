@@ -644,7 +644,7 @@
     @click="showApplicationsModal = false"
   >
     <div
-      class="relative top-10 mx-auto p-5 border w-11/12 md:w-4/5 lg:w-3/4 shadow-lg rounded-md bg-white max-h-screen overflow-y-auto"
+      class="relative top-10 mx-auto p-5 border w-11/12 md:w-4/5 lg:w-3/4 xl:w-2/3 shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto"
       @click.stop
     >
       <!-- Modal Header -->
@@ -662,95 +662,116 @@
         </button>
       </div>
 
-      <!-- Tabla de postulantes -->
-      <div class="overflow-x-auto mt-6">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Correo</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Teléfono</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nacimiento</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">RUT</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Género</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nacionalidad</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Dirección</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Carrera</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CV</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="applicant in applicants" :key="applicant.rut">
-              <td class="px-4 py-2 whitespace-nowrap">{{ applicant.nombre }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">{{ applicant.correo }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">{{ applicant.telefono }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">{{ applicant.fechaNacimiento }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">{{ applicant.rut }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">{{ applicant.genero }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">{{ applicant.nacionalidad }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">{{ applicant.direccion }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">{{ applicant.carrera }}</td>
-              <td class="px-4 py-2 whitespace-nowrap">
-                <a
-                  v-if="applicant.cv"
-                  :href="applicant.cv"
-                  target="_blank"
-                  class="text-blue-600 hover:underline"
-                >Ver CV</a>
-                <span v-else class="text-gray-400">No disponible</span>
-              </td>
-            </tr>
-            <tr v-if="applicants.length === 0">
-              <td colspan="10" class="px-4 py-2 text-center text-gray-500">Sin postulaciones registradas</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Loading State -->
+      <div v-if="loadingApplicants" class="flex justify-center items-center py-12">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+
+      <!-- Postulantes List -->
+      <div v-else-if="applicants.length > 0" class="mt-6 space-y-4">
+        <div
+          v-for="applicant in applicants"
+          :key="applicant.id"
+          class="bg-gray-50 rounded-lg p-6 hover:bg-gray-100 transition-colors border border-gray-200"
+        >
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <!-- User Info -->
+              <div class="flex items-center mb-4">
+                <div class="bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center mr-4">
+                  <span class="text-blue-600 font-semibold text-lg">
+                    {{ applicant.user.name.split(' ').map(n => n[0]).slice(0, 2).join('') }}
+                  </span>
+                </div>
+                <div>
+                  <h4 class="text-lg font-semibold text-gray-900">{{ applicant.user.name }}</h4>
+                  <p class="text-gray-600">{{ applicant.user.career }}</p>
+                </div>
+              </div>
+
+              <!-- Contact Info -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                <div class="flex items-center text-sm text-gray-700">
+                  <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                  <a :href="`mailto:${applicant.user.email}`" class="hover:text-blue-600">
+                    {{ applicant.user.email }}
+                  </a>
+                </div>
+                <div class="flex items-center text-sm text-gray-700">
+                  <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                  </svg>
+                  <a :href="`tel:${applicant.user.phone}`" class="hover:text-blue-600">
+                    {{ applicant.user.phone }}
+                  </a>
+                </div>
+              </div>
+
+              <!-- Application Details -->
+              <div class="flex items-center gap-4 text-sm">
+                <span class="text-gray-600">
+                  <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                  {{ formatApplicationDate(applicant.applicationDate) }}
+                </span>
+                <span
+                  :class="getApplicationStatusClass(applicant.status)"
+                  class="px-3 py-1 rounded-full text-xs font-medium"
+                >
+                  {{ getStatusText(applicant.status) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- CV Button -->
+            <div class="ml-4">
+              <a
+                :href="applicant.cvUrl"
+                target="_blank"
+                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Ver CV
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else class="text-center py-12">
+        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+        <h4 class="text-xl font-semibold text-gray-900 mb-2">No hay postulantes</h4>
+        <p class="text-gray-600">Aún no hay postulantes para esta oferta laboral.</p>
       </div>
     </div>
   </div>
+
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import Navbar from "@/components/Navbar.vue";
-import { getJobOfferById, updateJobOffer } from "@/config/api.js";
+import { getJobOfferById, updateJobOffer, getJobOfferApplicants } from "@/config/api.js";
 
 const route = useRoute();
+const router = useRouter();
 const isLoading = ref(true);
 // Reactive data
 const hasApplied = ref(false);
 const isSaved = ref(false);
 const showEditModal = ref(false);
 const showApplicationsModal = ref(false);
-
-// Ejemplo de postulantes (puedes reemplazarlo por datos reales)
-const applicants = ref([
-  {
-    nombre: "Juan Pérez",
-    correo: "juan.perez@email.com",
-    telefono: "+56 9 1234 5678",
-    fechaNacimiento: "1998-05-12",
-    rut: "12.345.678-9",
-    genero: "Masculino",
-    nacionalidad: "Chilena",
-    direccion: "Av. Siempre Viva 123, Temuco",
-    carrera: "Ingeniería Informática",
-    cv: "https://ejemplo.com/cv-juan.pdf"
-  },
-  {
-    nombre: "María López",
-    correo: "maria.lopez@email.com",
-    telefono: "+56 9 8765 4321",
-    fechaNacimiento: "1997-08-22",
-    rut: "98.765.432-1",
-    genero: "Femenino",
-    nacionalidad: "Chilena",
-    direccion: "Calle Falsa 456, Temuco",
-    carrera: "Ingeniería Comercial",
-    cv: null
-  }
-]);
+const applicants = ref([]);
+const loadingApplicants = ref(false);
 
 const job = ref({
   id: 1,
@@ -967,8 +988,47 @@ const copyJobLink = () => {
   // Aquí podrías mostrar una notificación
 };
 
-const viewApplications = () => {
-  showApplicationsModal.value = true;
+const viewApplications = async () => {
+  try {
+    showApplicationsModal.value = true;
+    loadingApplicants.value = true;
+    const jobId = route.params.id || route.query.id;
+    applicants.value = await getJobOfferApplicants(jobId);
+  } catch (error) {
+    console.error('Error al cargar postulantes:', error);
+    alert('Error al cargar los postulantes: ' + error.message);
+  } finally {
+    loadingApplicants.value = false;
+  }
+};
+
+const formatApplicationDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+};
+
+const getStatusText = (status) => {
+  const statusMap = {
+    pending: 'Pendiente',
+    viewed: 'Visto',
+    accepted: 'Aceptado',
+    rejected: 'Rechazado',
+  };
+  return statusMap[status] || status;
+};
+
+const getApplicationStatusClass = (status) => {
+  const classMap = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    viewed: 'bg-blue-100 text-blue-800',
+    accepted: 'bg-green-100 text-green-800',
+    rejected: 'bg-red-100 text-red-800',
+  };
+  return classMap[status] || 'bg-gray-100 text-gray-800';
 };
 
 const loadJobOffer = async () => {

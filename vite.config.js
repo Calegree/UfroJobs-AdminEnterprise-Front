@@ -35,7 +35,21 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      '/api/job-offers': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      },
       '/applications': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/api/admin': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      },
+      '/users': {
         target: 'http://localhost:3000',
         changeOrigin: true,
       }

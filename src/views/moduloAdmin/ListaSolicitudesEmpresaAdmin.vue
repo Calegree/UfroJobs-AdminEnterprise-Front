@@ -1,11 +1,8 @@
 <template>
-
-
-  
-    <div class="flex h-screen" >
-        <SidebarAdmin />
-        <div class="flex-1 p-6">
-             <!-- Header -->
+  <div class="flex h-screen">
+    <SidebarAdmin />
+    <div class="flex-1 p-6">
+      <!-- Header -->
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-gray-900 mb-2">Solicitudes de Aprobación</h1>
       <p class="text-gray-600">Gestiona las solicitudes de registro de empresas pendientes de aprobación</p>
@@ -100,7 +97,15 @@
 
     <!-- Approvals Table -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div class="overflow-x-auto">
+      <!-- Loading State -->
+      <div v-if="isLoading" class="flex justify-center items-center py-12">
+        <svg class="animate-spin h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+        </svg>
+      </div>
+      
+      <div v-else class="overflow-x-auto">
         <table class="w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
@@ -143,7 +148,7 @@
 
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
-                  :class=" [
+                  :class="[
                     'inline-flex px-2 py-1 text-xs font-semibold rounded-full',
                     getStatusClass(approval.status)
                   ]"
@@ -175,11 +180,6 @@
         </table>
       </div>
     </div>
-
-        </div>
-
-    
-   
 
     <!-- Approval Detail Modal -->
     <div
@@ -439,12 +439,61 @@
         </div>
       </div>
     </div>
+
+    <!-- Rejection Modal -->
+    <div
+      v-if="showRejectionModal"
+      class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+      @click="closeRejectionModal"
+    >
+      <div
+        class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white"
+        @click.stop
+      >
+        <div class="flex items-center justify-between pb-4 border-b">
+          <h3 class="text-lg font-semibold text-gray-900">Rechazar Solicitud</h3>
+          <button @click="closeRejectionModal" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Motivo del rechazo (obligatorio)
+          </label>
+          <textarea
+            v-model="rejectionReason"
+            rows="4"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            placeholder="Explica el motivo del rechazo..."
+          ></textarea>
+        </div>
+        <div class="mt-6 flex justify-end space-x-3">
+          <button
+            @click="closeRejectionModal"
+            class="px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="confirmRejection"
+            :disabled="!rejectionReason.trim()"
+            class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Confirmar Rechazo
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
 </template>
 
 <script>
 import SidebarAdmin from '@/components/SidebarAdmin.vue'
 import { ref, computed, onMounted } from 'vue'
+import { getPendingCompanies, approveCompany, rejectCompany } from '@/config/api.js'
 
 export default {
   name: 'AdminApprovalsList',
@@ -454,13 +503,47 @@ export default {
   setup() {
     const approvals = ref([])
     const searchTerm = ref('')
-    const statusFilter = ref('')
+    const statusFilter = ref('pending')
     const showModal = ref(false)
     const showRejectionModal = ref(false)
     const selectedApproval = ref(null)
     const rejectionReason = ref('')
+    const isLoading = ref(true)
 
-    // Sample data
+    // Load pending companies from API
+    const loadPendingCompanies = async () => {
+      try {
+        isLoading.value = true
+        const companies = await getPendingCompanies()
+        
+        // Transform API data to component format
+        approvals.value = companies.map(company => ({
+          id: company.id,
+          companyName: company.name,
+          email: company.email,
+          phone: company.phone || 'No especificado',
+          rut: company.rut || 'No especificado',
+          industry: company.industry || 'No especificada',
+          size: company.size || 'No especificado',
+          address: company.localization || 'No especificada',
+          description: company.description || 'Sin descripción',
+          requestType: 'Registro de empresa',
+          priority: 'medium',
+          status: company.state === 'pendiente' ? 'pending' : company.state === 'activo' ? 'approved' : 'rejected',
+          createdAt: company.createdAt || new Date().toISOString().split('T')[0],
+          documents: company.documents || []
+        }))
+        
+        console.log('Pending companies loaded:', approvals.value)
+      } catch (error) {
+        console.error('Error loading pending companies:', error)
+        alert(`Error al cargar solicitudes: ${error.message}`)
+      } finally {
+        isLoading.value = false
+      }
+    }
+
+    // Sample data as fallback
     const sampleApprovals = [
       {
         id: 1,
@@ -620,14 +703,21 @@ export default {
       rejectionReason.value = ''
     }
 
-    const approveRequest = (approval) => {
+    const approveRequest = async (approval) => {
       if (confirm(`¿Estás seguro de que quieres aprobar la solicitud de ${approval.companyName}?`)) {
-        approval.status = 'approved'
-        approval.reviewedAt = new Date().toISOString().split('T')[0]
-        approval.reviewedBy = 'Admin Actual'
-        approval.reviewComments = 'Solicitud aprobada exitosamente.'
-        alert('Solicitud aprobada exitosamente')
-        closeModal()
+        try {
+          await approveCompany(approval.id)
+          approval.status = 'approved'
+          approval.reviewedAt = new Date().toISOString().split('T')[0]
+          approval.reviewedBy = 'Admin Actual'
+          approval.reviewComments = 'Solicitud aprobada exitosamente.'
+          alert('Solicitud aprobada exitosamente')
+          closeModal()
+          await loadPendingCompanies() // Reload list
+        } catch (error) {
+          console.error('Error approving company:', error)
+          alert(`Error al aprobar la empresa: ${error.message}`)
+        }
       }
     }
 
@@ -636,15 +726,22 @@ export default {
       showRejectionModal.value = true
     }
 
-    const confirmRejection = () => {
+    const confirmRejection = async () => {
       if (selectedApproval.value && rejectionReason.value.trim()) {
-        selectedApproval.value.status = 'rejected'
-        selectedApproval.value.reviewedAt = new Date().toISOString().split('T')[0]
-        selectedApproval.value.reviewedBy = 'Admin Actual'
-        selectedApproval.value.reviewComments = rejectionReason.value
-        alert('Solicitud rechazada')
-        closeRejectionModal()
-        closeModal()
+        try {
+          await rejectCompany(selectedApproval.value.id)
+          selectedApproval.value.status = 'rejected'
+          selectedApproval.value.reviewedAt = new Date().toISOString().split('T')[0]
+          selectedApproval.value.reviewedBy = 'Admin Actual'
+          selectedApproval.value.reviewComments = rejectionReason.value
+          alert('Solicitud rechazada')
+          closeRejectionModal()
+          closeModal()
+          await loadPendingCompanies() // Reload list
+        } catch (error) {
+          console.error('Error rejecting company:', error)
+          alert(`Error al rechazar la empresa: ${error.message}`)
+        }
       }
     }
 
@@ -664,11 +761,12 @@ export default {
     }
 
     onMounted(() => {
-      approvals.value = sampleApprovals
+      loadPendingCompanies()
     })
 
     return {
       approvals,
+      isLoading,
       searchTerm,
       statusFilter,
       showModal,

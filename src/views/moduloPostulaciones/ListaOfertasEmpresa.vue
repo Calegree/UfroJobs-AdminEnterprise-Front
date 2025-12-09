@@ -780,9 +780,7 @@ const submitOffer = async () => {
       tags: tagsArray.length > 0 ? tagsArray : ['general'],
       salary: newOffer.value.salary,
       worktime: newOffer.value.schedule,
-      modality: newOffer.value.modality,
-      publication_date: new Date().toISOString(),
-      status: 'active'
+      modality: newOffer.value.modality
     };
 
     console.log('Datos a enviar:', offerData);

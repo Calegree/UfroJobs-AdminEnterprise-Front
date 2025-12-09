@@ -36,14 +36,13 @@
               >
               <span class="material-icons text-gray-400"></span>
             </div>
-            <div class="text-2xl font-bold">132</div>
+            <div class="text-2xl font-bold">{{ isLoading ? '...' : totalCompanies }}</div>
             <div class="flex items-center text-xs text-green-600">
               <span
                 class="material-icons text-green-600 mr-1"
                 style="font-size: 16px"
               ></span>
-              +8.2%
-              <span class="text-gray-400 ml-1">desde el mes pasado</span>
+              Total en el sistema
             </div>
           </div>
           <div class="bg-white rounded-xl border p-4 flex flex-col gap-2">
@@ -115,26 +114,60 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import GraficoPostulaciones from "@/components/GraficoPostulaciones.vue";
 import GraficoUsuarios from "@/components/GraficoUsuarios.vue";
 import SidebarAdmin from "../../components/SidebarAdmin.vue";
+import { getUserDistribution, getJobOffersByMonth, getTotalCompanies } from "@/config/api.js";
 
 const selectedPeriod = ref("30d");
+const monthlyData = ref([]);
+const userDistribution = ref([]);
+const totalCompanies = ref(0);
+const isLoading = ref(true);
 
-const monthlyData = [
-  { month: "Ene", postulaciones: 15, empresas: 8, estudiantes: 12 },
-  { month: "Feb", postulaciones: 22, empresas: 12, estudiantes: 18 },
-  { month: "Mar", postulaciones: 18, empresas: 10, estudiantes: 15 },
-  { month: "Abr", postulaciones: 35, empresas: 18, estudiantes: 28 },
-  { month: "May", postulaciones: 42, empresas: 22, estudiantes: 35 },
-  { month: "Jun", postulaciones: 38, empresas: 20, estudiantes: 32 },
-];
+const monthNames = {
+  '01': 'Ene', '02': 'Feb', '03': 'Mar', '04': 'Abr',
+  '05': 'May', '06': 'Jun', '07': 'Jul', '08': 'Ago',
+  '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dic'
+};
 
-const userDistribution = [
-  { name: "Estudiantes", value: 256, color: "#3b82f6" },
-  { name: "Empresas", value: 132, color: "#10b981" },
-];
+const loadDashboardData = async () => {
+  try {
+    isLoading.value = true;
+
+    // Cargar distribución de usuarios
+    const userDistData = await getUserDistribution();
+    userDistribution.value = userDistData;
+
+    // Cargar ofertas por mes
+    const jobOffersData = await getJobOffersByMonth();
+    monthlyData.value = jobOffersData.map(item => {
+      const [year, month] = item.month.split('-');
+      return {
+        month: monthNames[month] || month,
+        postulaciones: item.job_offers,
+        empresas: 0,
+        estudiantes: 0
+      };
+    });
+
+    // Cargar total de empresas
+    const companiesData = await getTotalCompanies();
+    totalCompanies.value = companiesData.total;
+
+    console.log('Dashboard data loaded:', { userDistribution: userDistribution.value, monthlyData: monthlyData.value, totalCompanies: totalCompanies.value });
+  } catch (error) {
+    console.error('Error loading dashboard data:', error);
+    alert(`Error al cargar datos del dashboard: ${error.message}`);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+onMounted(() => {
+  loadDashboardData();
+});
 </script>
 
 <style scoped>

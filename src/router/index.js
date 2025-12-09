@@ -32,10 +32,22 @@ const router = createRouter({
         import("../views/moduloPostulaciones/DetalleOfertaEmpresa.vue"),
     },
     {
+      path: "/empresa/postulantes",
+      name: "verPostulantesEmpresa",
+      component: () =>
+        import("../views/moduloPostulaciones/VerPostulantesEmpresa.vue"),
+    },
+    {
       path: "/",
       name: "inicioSesion",
       component: () =>
         import("../views/moduloAutentificacion/InicioSesion.vue"),
+    },
+    {
+      path: "/admin/login",
+      name: "inicioSesionAdmin",
+      component: () =>
+        import("../views/moduloAutentificacion/InicioSesionAdmin.vue"),
     },
     {
       path: "/admin/dashboard",

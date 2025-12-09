@@ -53,7 +53,15 @@
         <div
           class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
         >
-          <div class="overflow-x-auto">
+          <!-- Loading State -->
+          <div v-if="isLoading" class="flex justify-center items-center py-12">
+            <svg class="animate-spin h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+            </svg>
+          </div>
+
+          <div v-else class="overflow-x-auto">
             <table class="w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
@@ -161,8 +169,6 @@
             </table>
           </div>
         </div>
-      </div>
-    </div>
 
     <!-- Company Detail Modal -->
     <div
@@ -438,13 +444,22 @@
         </div>
       </div>
     </div>
-
+    </div>
+  </div>
 </template>
 
 <script>
 import SidebarAdmin from "@/components/SidebarAdmin.vue";
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { 
+  getAllCompanies, 
+  getCompanyById, 
+  updateCompanyAdmin, 
+  toggleCompanyState, 
+  deleteCompany,
+  getCompanyJobOffers 
+} from "@/config/api.js";
 
 export default {
   name: "AdminCompaniesList",
@@ -459,10 +474,46 @@ export default {
     const showModal = ref(false);
     const selectedCompany = ref(null);
     const isEditing = ref(false);
-    const modalView = ref("details"); // <-- NUEVO
+    const modalView = ref("details");
+    const isLoading = ref(true);
     const router = useRouter();
 
-    // Sample data
+    // Load companies from API
+    const loadCompanies = async () => {
+      try {
+        isLoading.value = true;
+        const companiesData = await getAllCompanies();
+        
+        companies.value = companiesData.map(company => ({
+          id: company.id,
+          name: company.name,
+          email: company.email,
+          phone: company.phone || 'No especificado',
+          rut: company.rut || 'No especificado',
+          industry: company.industry || 'technology',
+          size: company.size || 'No especificado',
+          address: company.localization || 'No especificada',
+          description: company.description || 'Sin descripción',
+          status: company.state === 'activo' ? 'active' : company.state === 'baneado' ? 'suspended' : 'pending',
+          createdAt: company.createdAt ? new Date(company.createdAt).toISOString().split('T')[0] : 'No disponible',
+          lastLogin: company.lastLogin || 'Nunca',
+          jobOffers: 0,
+          applications: 0,
+          hires: 0,
+          documents: company.documents || [],
+          jobOffersList: []
+        }));
+        
+        console.log('Companies loaded:', companies.value);
+      } catch (error) {
+        console.error('Error loading companies:', error);
+        alert(`Error al cargar empresas: ${error.message}`);
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    // Sample data as fallback
     const sampleCompanies = [
       {
         id: 1,
@@ -683,7 +734,7 @@ export default {
       }, 0);
     };
 
-    const saveCompanyEdits = () => {
+    const saveCompanyEdits = async () => {
       const nameInput = document.querySelector("#company-name input");
       const emailInput = document.querySelector("#company-email input");
       const industrySelect = document.querySelector("#company-industry select");
@@ -691,6 +742,7 @@ export default {
       const rutInput = document.querySelector("#company-rut input");
       const phoneInput = document.querySelector("#company-phone input");
       const sizeInput = document.querySelector("#company-size input");
+      
       if (
         selectedCompany.value &&
         nameInput &&
@@ -701,35 +753,70 @@ export default {
         phoneInput &&
         sizeInput
       ) {
-        selectedCompany.value.name = nameInput.value;
-        selectedCompany.value.email = emailInput.value;
-        selectedCompany.value.industry = industrySelect.value;
-        selectedCompany.value.address = addressInput.value;
-        selectedCompany.value.rut = rutInput.value;
-        selectedCompany.value.phone = phoneInput.value;
-        selectedCompany.value.size = sizeInput.value;
+        try {
+          const updateData = {
+            name: nameInput.value,
+            email: emailInput.value,
+            localization: addressInput.value,
+            rut: rutInput.value,
+            phone: phoneInput.value,
+            // industry y size pueden no estar en el backend, pero los enviamos por si acaso
+          };
+
+          await updateCompanyAdmin(selectedCompany.value.id, updateData);
+          
+          selectedCompany.value.name = nameInput.value;
+          selectedCompany.value.email = emailInput.value;
+          selectedCompany.value.industry = industrySelect.value;
+          selectedCompany.value.address = addressInput.value;
+          selectedCompany.value.rut = rutInput.value;
+          selectedCompany.value.phone = phoneInput.value;
+          selectedCompany.value.size = sizeInput.value;
+          
+          alert('Empresa actualizada exitosamente');
+          isEditing.value = false;
+          await loadCompanies();
+        } catch (error) {
+          console.error('Error updating company:', error);
+          alert(`Error al actualizar empresa: ${error.message}`);
+        }
       }
-      isEditing.value = false;
     };
 
-    const toggleCompanyStatus = (company) => {
+    const toggleCompanyStatus = async (company) => {
       const newStatus = company.status === "active" ? "suspended" : "active";
       const action = newStatus === "active" ? "activar" : "suspender";
 
-      if (
-        confirm(`¿Estás seguro de que quieres ${action} a ${company.name}?`)
-      ) {
-        company.status = newStatus;
-        alert(
-          `Empresa ${
-            newStatus === "active" ? "activada" : "suspendida"
-          } exitosamente`
-        );
+      if (confirm(`¿Estás seguro de que quieres ${action} a ${company.name}?`)) {
+        try {
+          await toggleCompanyState(company.id);
+          company.status = newStatus;
+          alert(`Empresa ${newStatus === "active" ? "activada" : "suspendida"} exitosamente`);
+          await loadCompanies();
+        } catch (error) {
+          console.error('Error toggling company status:', error);
+          alert(`Error al cambiar estado: ${error.message}`);
+        }
       }
     };
 
-    const viewCompanyOffers = (company) => {
-      modalView.value = "offers";
+    const viewCompanyOffers = async (company) => {
+      try {
+        const offers = await getCompanyJobOffers(company.id);
+        selectedCompany.value.jobOffersList = offers.map(offer => ({
+          id: offer.id,
+          title: offer.title,
+          location: offer.location || 'No especificada',
+          date: offer.publication_date ? new Date(offer.publication_date).toISOString().split('T')[0] : 'No disponible',
+          type: offer.worktime || 'No especificado',
+          applicants: offer.applicants || 0,
+          status: offer.state === 'activo' ? 'Abierta' : 'Cerrada'
+        }));
+        modalView.value = "offers";
+      } catch (error) {
+        console.error('Error loading company offers:', error);
+        alert(`Error al cargar ofertas: ${error.message}`);
+      }
     };
 
     const sendMessage = (company) => {
@@ -744,11 +831,12 @@ export default {
     };
 
     onMounted(() => {
-      companies.value = sampleCompanies;
+      loadCompanies();
     });
 
     return {
       companies,
+      isLoading,
       searchTerm,
       statusFilter,
       industryFilter,

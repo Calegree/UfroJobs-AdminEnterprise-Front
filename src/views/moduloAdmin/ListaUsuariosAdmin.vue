@@ -50,7 +50,15 @@
       <div
         class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
       >
-        <div class="overflow-x-auto">
+        <!-- Loading State -->
+        <div v-if="isLoading" class="flex justify-center items-center py-12">
+          <svg class="animate-spin h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+          </svg>
+        </div>
+
+        <div v-else class="overflow-x-auto">
           <table class="w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
@@ -363,6 +371,14 @@
 <script>
 import SidebarAdmin from "@/components/SidebarAdmin.vue";
 import { ref, computed, onMounted } from "vue";
+import { 
+  getAllStudents, 
+  getUserById, 
+  updateUserAdmin, 
+  toggleUserState, 
+  deleteUser,
+  getUserApplications 
+} from "@/config/api.js";
 
 export default {
   name: "AdminUsersList",
@@ -373,12 +389,40 @@ export default {
     const users = ref([]);
     const searchTerm = ref("");
     const statusFilter = ref("");
-    const typeFilter = ref("");
+    const typeFilter = ref("student");
     const showModal = ref(false);
     const selectedUser = ref(null);
     const isEditing = ref(false);
+    const isLoading = ref(true);
 
-    // Sample data
+    // Load users/students from API
+    const loadUsers = async () => {
+      try {
+        isLoading.value = true;
+        const studentsData = await getAllStudents();
+        
+        users.value = studentsData.map(user => ({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || 'No especificado',
+          type: 'student',
+          status: user.status || 'active',
+          createdAt: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : 'No disponible',
+          lastLogin: user.lastLogin || 'Nunca',
+          applications: user.applications || 0
+        }));
+        
+        console.log('Users loaded:', users.value);
+      } catch (error) {
+        console.error('Error loading users:', error);
+        alert(`Error al cargar usuarios: ${error.message}`);
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    // Sample data as fallback
     const sampleUsers = [
       {
         id: 1,
@@ -500,17 +544,20 @@ export default {
         });
       }, 0);
     };
-    const toggleUserStatus = (user) => {
+    const toggleUserStatus = async (user) => {
       const newStatus = user.status === "active" ? "suspended" : "active";
       const action = newStatus === "active" ? "activar" : "suspender";
 
       if (confirm(`¿Estás seguro de que quieres ${action} a ${user.name}?`)) {
-        user.status = newStatus;
-        alert(
-          `Usuario ${
-            newStatus === "active" ? "activado" : "suspendido"
-          } exitosamente`
-        );
+        try {
+          await toggleUserState(user.id);
+          user.status = newStatus;
+          alert(`Usuario ${newStatus === "active" ? "activado" : "suspendido"} exitosamente`);
+          await loadUsers();
+        } catch (error) {
+          console.error('Error toggling user status:', error);
+          alert(`Error al cambiar estado: ${error.message}`);
+        }
       }
     };
 
@@ -523,17 +570,34 @@ export default {
         alert("Contraseña reseteada. Se ha enviado un email al usuario.");
       }
     };
-    const saveUserEdits = () => {
-      // Obtén los valores de los inputs
+    
+    const saveUserEdits = async () => {
       const nameInput = document.querySelector("#user-name input");
       const emailInput = document.querySelector("#user-email input");
       const phoneInput = document.querySelector("#user-phone input");
+      
       if (selectedUser.value && nameInput && emailInput && phoneInput) {
-        selectedUser.value.name = nameInput.value;
-        selectedUser.value.email = emailInput.value;
-        selectedUser.value.phone = phoneInput.value;
+        try {
+          const updateData = {
+            name: nameInput.value,
+            email: emailInput.value,
+            phone: phoneInput.value
+          };
+
+          await updateUserAdmin(selectedUser.value.id, updateData);
+          
+          selectedUser.value.name = nameInput.value;
+          selectedUser.value.email = emailInput.value;
+          selectedUser.value.phone = phoneInput.value;
+          
+          alert('Usuario actualizado exitosamente');
+          isEditing.value = false;
+          await loadUsers();
+        } catch (error) {
+          console.error('Error updating user:', error);
+          alert(`Error al actualizar usuario: ${error.message}`);
+        }
       }
-      isEditing.value = false;
     };
 
     const viewUserActivity = (user) => {
@@ -542,21 +606,24 @@ export default {
     };
 
     onMounted(() => {
-      users.value = sampleUsers;
+      loadUsers();
     });
 
     return {
       users,
+      isLoading,
       searchTerm,
       statusFilter,
       typeFilter,
       showModal,
       selectedUser,
+      isEditing,
       filteredUsers,
       formatDate,
       openUserModal,
       closeModal,
       editUser,
+      saveUserEdits,
       toggleUserStatus,
       resetPassword,
       viewUserActivity,

@@ -40,6 +40,18 @@ const handleResponse = async (response) => {
 // ==================== AUTH ENDPOINTS ====================
 
 /**
+ * Login admin
+ */
+export const loginAdmin = async (email, password) => {
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  return handleResponse(response);
+};
+
+/**
  * Login company
  */
 export const loginCompany = async (email, password) => {
@@ -178,4 +190,256 @@ export const uploadFileToS3 = async (presignedUrl, file) => {
   }
   
   return response;
+};
+
+// ==================== ADMIN ENDPOINTS ====================
+
+/**
+ * Get pending companies for approval
+ */
+export const getPendingCompanies = async () => {
+  const response = await fetch(`${API_BASE_URL}/admin/dashboard/pending-companies`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Approve a company
+ */
+export const approveCompany = async (companyId) => {
+  const response = await fetch(`${API_BASE_URL}/admin/dashboard/approve-company/${companyId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Reject a company
+ */
+export const rejectCompany = async (companyId) => {
+  const response = await fetch(`${API_BASE_URL}/admin/dashboard/reject-company/${companyId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Get user distribution statistics
+ */
+export const getUserDistribution = async () => {
+  const response = await fetch(`${API_BASE_URL}/admin/dashboard/user-distribution`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Get job offers by month statistics
+ */
+export const getJobOffersByMonth = async () => {
+  const response = await fetch(`${API_BASE_URL}/admin/dashboard/job-offers-by-month`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Get total companies count
+ */
+export const getTotalCompanies = async () => {
+  const response = await fetch(`${API_BASE_URL}/admin/dashboard/total-companies`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// ==================== COMPANIES MANAGEMENT ====================
+
+/**
+ * Get all companies
+ */
+export const getAllCompanies = async () => {
+  const response = await fetch(`${API_BASE_URL}/companies`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Get company by ID
+ */
+export const getCompanyById = async (companyId) => {
+  const response = await fetch(`${API_BASE_URL}/companies/${companyId}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Update company (admin)
+ */
+export const updateCompanyAdmin = async (companyId, companyData) => {
+  const response = await fetch(`${API_BASE_URL}/companies/${companyId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(companyData),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Toggle company state (activo/baneado)
+ */
+export const toggleCompanyState = async (companyId) => {
+  const response = await fetch(`${API_BASE_URL}/companies/${companyId}/toggle-state`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Delete company
+ */
+export const deleteCompany = async (companyId) => {
+  const response = await fetch(`${API_BASE_URL}/companies/${companyId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Get company job offers
+ */
+export const getCompanyJobOffers = async (companyId) => {
+  const response = await fetch(`${API_BASE_URL}/companies/${companyId}/job-offers`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// ==================== USERS MANAGEMENT ====================
+
+/**
+ * Get all students
+ */
+export const getAllStudents = async () => {
+  const response = await fetch(`${API_BASE_URL}/users/students`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Get user by ID
+ */
+export const getUserById = async (userId) => {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Update user (admin)
+ */
+export const updateUserAdmin = async (userId, userData) => {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(userData),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Toggle user state (activo/inactivo)
+ */
+export const toggleUserState = async (userId) => {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/toggle-state`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Delete user
+ */
+export const deleteUser = async (userId) => {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Get user applications
+ */
+export const getUserApplications = async (userId) => {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/applications`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// ==================== JOB OFFERS MANAGEMENT ====================
+
+/**
+ * Get job offer applications/applicants
+ */
+export const getJobOfferApplications = async (jobOfferId) => {
+  const response = await fetch(`${API_BASE_URL}/job-offers/${jobOfferId}/applications`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Get job offer applicants with user details
+ */
+export const getJobOfferApplicants = async (jobOfferId) => {
+  const response = await fetch(`${API_BASE_URL}/job-offers/${jobOfferId}/applicants`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Toggle job offer state (admin)
+ */
+export const toggleJobOfferState = async (jobOfferId) => {
+  const response = await fetch(`${API_BASE_URL}/job-offers/${jobOfferId}/toggle-state`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Delete job offer (admin)
+ */
+export const deleteJobOffer = async (jobOfferId) => {
+  const response = await fetch(`${API_BASE_URL}/job-offers/${jobOfferId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
 };
